@@ -1,162 +1,58 @@
 <?php
+session_start();
 require 'config.php';
 
-$message = "";
-
-if ($_SERVER["REQUEST_METHOD"] == "POST") 
-{
-    $full_name = htmlspecialchars(strip_tags(trim($_POST['full_name'] ?? '')));
-    $phone = htmlspecialchars(strip_tags(trim($_POST['phone'] ?? '')));
-    $student_number = htmlspecialchars(strip_tags(trim($_POST['student_number'] ?? '')));
-    $skills = htmlspecialchars(strip_tags(trim($_POST['skills'] ?? '')));
-
-    if (!empty($full_name) && !empty($phone) && !empty($student_number)) 
-    {
-        $check_sql = "SELECT COUNT(*) FROM users WHERE student_number = :student_number";
-        $check_stmt = $pdo->prepare($check_sql);
-        $check_stmt->execute([':student_number' => $student_number]);
-        
-        if ($check_stmt->fetchColumn() > 0) 
-        {
-            $message = "خطا: این شماره دانشجویی قبلاً ثبت نام کرده است!";
-        } 
-        else 
-        {
-            $sql = "INSERT INTO users (full_name, phone, student_number, skills) VALUES (:full_name, :phone, :student_number, :skills)";
-            $stmt = $pdo->prepare($sql);
-            $stmt->execute([
-                ':full_name' => $full_name,
-                ':phone' => $phone,
-                ':student_number' => $student_number,
-                ':skills' => $skills
-            ]);
-            $message = "ثبت نام با موفقیت انجام شد.";
-        }
-    } 
-    else 
-    {
-        $message = "لطفاً تمامی فیلدهای اجباری را پر کنید.";
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    // اعتبارسنجی شماره تلفن
+    $phone = $_POST['phone'];
+    $phoneRegex = '/^[0-9]{10,11}$/';
+    
+    if (!preg_match($phoneRegex, $phone)) {
+        echo "<script>
+                alert('شماره تلفن باید فقط اعداد و ۱۰ یا ۱۱ رقم باشد');
+                window.location.href = 'index.php';
+              </script>";
+        exit;
     }
+    
+    $first_name = $_POST['first_name'];
+    $last_name = $_POST['last_name'];
+    $student_number = $_POST['student_number'];
+    $skills = $_POST['skills'];
+    $created_at = date('Y-m-d H:i:s');
+
+    try {
+        // کوئری SQL صحیح با نام‌های دقیق ستون‌ها
+          $sql = "INSERT INTO users (first_name, last_name, phone, student_number, skills) 
+            VALUES (:first_name, :last_name, :phone, :student_number, :skills)";
+    
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([
+            ':first_name' => $first_name,
+            ':last_name' => $last_name,
+            ':phone' => $phone,
+            ':student_number' => $student_number,
+            ':skills' => $skills,
+            ':created_at' => $created_at
+        ]);
+
+        echo "<script>
+                alert('اطلاعات با موفقیت ثبت شد!');
+                echo "ثبت نام با موفقیت انجام شد.";
+                header("Refresh: 2; url=admin.php"); // هدایت خودکار به پنل ادمین
+                window.location.href = 'index.php';
+              </script>";
+        exit;
+
+    } catch (PDOException $e) {
+        echo "<script>
+                alert('خطا در ثبت اطلاعات: " . $e->getMessage() . "');
+                window.location.href = 'index.php';
+              </script>";
+        exit;
+    }
+} else {
+    header("Location: index.php");
+    exit;
 }
 ?>
-
-<!DOCTYPE html>
-<html lang="fa">
-<head>
-    <meta charset="UTF-8">
-    <title>فرم ثبت نام</title>
-
-    <style>
-
-        body
-        {
-            direction: rtl;
-            font-family: Tahoma;
-            background:#f4f6f9;
-            display:flex;
-            justify-content:center;
-            align-items:center;
-            min-height:100vh;
-            margin:0;
-        }
-
-        .container
-        {
-            width:450px;
-            background:white;
-            padding:30px;
-            border-radius:15px;
-            box-shadow:0 5px 20px rgba(0,0,0,0.15);
-        }
-
-        h2
-        {
-            text-align:center;
-            margin-bottom:20px;
-        }
-
-        input,
-        textarea
-        {
-            width:100%;
-            padding:10px;
-            margin-top:5px;
-            margin-bottom:15px;
-            border:1px solid #ccc;
-            border-radius:8px;
-            box-sizing:border-box;
-        }
-
-        button
-        {
-            width:100%;
-            padding:12px;
-            background:#2563eb;
-            color:white;
-            border:none;
-            border-radius:8px;
-            cursor:pointer;
-            font-size:16px;
-        }
-
-        button:hover
-        {
-            background:#1d4ed8;
-        }
-
-        .message
-        {
-            text-align:center;
-            font-weight:bold;
-            margin-bottom:15px;
-        }
-
-    </style>
-</head>
-
-<body>
-
-<div class="container">
-
-    <h2>فرم ثبت نام</h2>
-
-    
-    <?php if(!empty($message)): ?>
-
-    <p class="message"
-    style="
-    padding:10px;
-    border-radius:8px;
-    background:
-    <?= strpos($message,'موفقیت') !== false ? '#d4edda' : '#f8d7da' ?>;
-    color:
-    <?= strpos($message,'موفقیت') !== false ? '#155724' : '#721c24' ?>;
-    ">
-    <?= htmlspecialchars($message) ?>
-    </p>
-
-    <?php endif; ?>
-
-
-
-    <form action="" method="POST">
-
-        <label>نام و نام خانوادگی:</label>
-        <input type="text" name="full_name" required>
-
-        <label>شماره تلفن:</label>
-        <input type="text" name="phone" required>
-
-        <label>شماره دانشجویی:</label>
-        <input type="text" name="student_number" required>
-
-        <label>مهارت ها:</label>
-        <textarea name="skills" rows="5"></textarea>
-
-        <button type="submit">ثبت اطلاعات</button>
-
-    </form>
-
-</div>
-</body>
-</html>
