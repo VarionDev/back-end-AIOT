@@ -14,6 +14,12 @@ if (isset($_POST['update'])) {
     if (!preg_match($phoneRegex, $phone)) {
         $error = "شماره تلفن باید فقط اعداد و ۱۰ یا ۱۱ رقم باشد";
     }
+    
+    if (!preg_match('/^[0-9]+$/', $student_number))
+    {
+        $error = "شماره دانشجویی فقط باید شامل عدد باشد.";
+    }
+    
 }
 } else {
     echo "دسترسی غیرمجاز!";
